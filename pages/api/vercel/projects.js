@@ -1,4 +1,4 @@
-// pages/api/vercel/projects.js
+// pages/api/vercel/projects.js - Perbaikan PUT method
 export default async function handler(req, res) {
   const { method, query, body } = req
   const { id } = query
@@ -6,7 +6,11 @@ export default async function handler(req, res) {
   const teamId = process.env.VERCEL_TEAM_ID
 
   if (!token) {
-    return res.status(500).json({ error: 'Vercel token not configured' })
+    return res.status(500).json({ 
+      success: false,
+      error: 'Vercel token not configured',
+      message: 'Please configure VERCEL_TOKEN environment variable'
+    })
   }
 
   const headers = {
@@ -21,29 +25,44 @@ export default async function handler(req, res) {
     switch (method) {
       case 'GET':
         if (id) {
-          // Get single project with deployments
-          const [projectRes, deploymentsRes] = await Promise.all([
-            fetch(`${baseUrl}/v9/projects/${id}${teamParam}`, { headers }),
-            fetch(`${baseUrl}/v6/deployments?projectId=${id}&limit=5${teamId ? `&teamId=${teamId}` : ''}`, { headers })
-          ])
+          const projectRes = await fetch(`${baseUrl}/v9/projects/${id}${teamParam}`, { headers })
           
           if (!projectRes.ok) {
-            return res.status(projectRes.status).json({ error: 'Project not found' })
+            const error = await projectRes.json()
+            return res.status(projectRes.status).json({ 
+              success: false,
+              error: error.error?.message || 'Project not found'
+            })
           }
           
           const project = await projectRes.json()
+          
+          // Get deployments
+          const deploymentsRes = await fetch(
+            `${baseUrl}/v6/deployments?projectId=${id}&limit=10${teamId ? `&teamId=${teamId}` : ''}`,
+            { headers }
+          )
+          
           const deployments = await deploymentsRes.json()
           
           res.json({
+            success: true,
             ...project,
             deployments: deployments.deployments || []
           })
         } else {
-          // List all projects with their latest deployment
           const response = await fetch(`${baseUrl}/v9/projects${teamParam}`, { headers })
+          
+          if (!response.ok) {
+            const error = await response.json()
+            return res.status(response.status).json({ 
+              success: false,
+              error: error.error?.message || 'Failed to fetch projects'
+            })
+          }
+          
           const data = await response.json()
           
-          // Fetch latest deployment for each project
           const projectsWithDeployments = await Promise.all(
             (data.projects || []).map(async (project) => {
               try {
@@ -62,59 +81,131 @@ export default async function handler(req, res) {
             })
           )
           
-          res.json({ projects: projectsWithDeployments })
+          res.json({ 
+            success: true,
+            projects: projectsWithDeployments 
+          })
         }
         break
 
       case 'POST':
-        // Create project
-        const createRes = await fetch(`${baseUrl}/v9/projects${teamParam}`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            name: body.name,
-            framework: body.framework,
-            gitRepository: body.gitRepository,
-            buildCommand: body.buildCommand,
-            outputDirectory: body.outputDirectory,
-            rootDirectory: body.rootDirectory,
-            installCommand: body.installCommand
+        try {
+          const createRes = await fetch(`${baseUrl}/v9/projects${teamParam}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              name: body.name,
+              framework: body.framework,
+              gitRepository: body.gitRepository,
+              buildCommand: body.buildCommand,
+              outputDirectory: body.outputDirectory,
+              rootDirectory: body.rootDirectory,
+              installCommand: body.installCommand
+            })
           })
-        })
-        
-        const result = await createRes.json()
-        
-        if (!createRes.ok) {
-          return res.status(createRes.status).json({ 
-            error: result.error?.message || 'Failed to create project' 
+          
+          const result = await createRes.json()
+          
+          if (!createRes.ok) {
+            return res.status(createRes.status).json({ 
+              success: false,
+              error: result.error?.message || 'Failed to create project',
+              details: result
+            })
+          }
+          
+          res.json({ 
+            success: true,
+            message: 'Project created successfully',
+            project: result
+          })
+        } catch (error) {
+          res.status(500).json({ 
+            success: false,
+            error: 'Internal server error',
+            details: error.message
           })
         }
-        
-        res.json(result)
+        break
+
+      case 'PUT':
+        try {
+          const updateRes = await fetch(`${baseUrl}/v9/projects/${id}${teamParam}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({
+              name: body.name,
+              framework: body.framework,
+              buildCommand: body.buildCommand,
+              outputDirectory: body.outputDirectory,
+              rootDirectory: body.rootDirectory,
+              installCommand: body.installCommand
+            })
+          })
+          
+          const result = await updateRes.json()
+          
+          if (!updateRes.ok) {
+            return res.status(updateRes.status).json({ 
+              success: false,
+              error: result.error?.message || 'Failed to update project',
+              details: result
+            })
+          }
+          
+          res.json({ 
+            success: true,
+            message: 'Project updated successfully',
+            project: result
+          })
+        } catch (error) {
+          res.status(500).json({ 
+            success: false,
+            error: 'Internal server error',
+            details: error.message
+          })
+        }
         break
 
       case 'DELETE':
-        // Delete project
-        const deleteRes = await fetch(`${baseUrl}/v9/projects/${id}${teamParam}`, {
-          method: 'DELETE',
-          headers
-        })
-        
-        if (!deleteRes.ok) {
-          const error = await deleteRes.json()
-          return res.status(deleteRes.status).json({ error: error.message })
+        try {
+          const deleteRes = await fetch(`${baseUrl}/v9/projects/${id}${teamParam}`, {
+            method: 'DELETE',
+            headers
+          })
+          
+          if (!deleteRes.ok) {
+            const error = await deleteRes.json()
+            return res.status(deleteRes.status).json({ 
+              success: false,
+              error: error.error?.message || 'Failed to delete project'
+            })
+          }
+          
+          res.json({ 
+            success: true,
+            message: 'Project deleted successfully'
+          })
+        } catch (error) {
+          res.status(500).json({ 
+            success: false,
+            error: 'Internal server error',
+            details: error.message
+          })
         }
-        
-        res.json({ success: true })
         break
 
       default:
-        res.setHeader('Allow', ['GET', 'POST', 'DELETE'])
-        res.status(405).json({ error: `Method ${method} Not Allowed` })
+        res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE'])
+        res.status(405).json({ 
+          success: false,
+          error: `Method ${method} Not Allowed`
+        })
     }
   } catch (error) {
     console.error('Vercel API Error:', error)
     res.status(500).json({ 
+      success: false,
       error: 'Internal server error',
       details: error.message 
     })
