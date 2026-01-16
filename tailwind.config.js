@@ -1,3 +1,5 @@
+// tailwind.config.js
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: 'class',
   content: [
@@ -18,6 +20,7 @@ module.exports = {
           900: '#111111',
           850: '#1a1a1a',
           800: '#222222',
+          700: '#333333',
         }
       },
       animation: {
@@ -26,6 +29,7 @@ module.exports = {
         'pulse-glow': 'pulse-glow 1.5s ease-in-out infinite',
         'gradient': 'gradient 8s linear infinite',
         'scan': 'scan 8s linear infinite',
+        'shimmer': 'shimmer 2s infinite',
       },
       keyframes: {
         glow: {
@@ -38,7 +42,7 @@ module.exports = {
         },
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-20px)' }
+          '50%': { transform: 'translateY(-10px)' }
         },
         'pulse-glow': {
           '0%, 100%': { 
@@ -57,11 +61,17 @@ module.exports = {
         scan: {
           '0%': { transform: 'translateY(-100%)' },
           '100%': { transform: 'translateY(100%)' }
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' }
         }
       },
       backgroundImage: {
         'cyber-grid': `linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px),
                       linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px)`,
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-neon': 'linear-gradient(45deg, #00f3ff, #8a2be2, #ff00ff)',
       }
     },
   },
