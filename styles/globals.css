@@ -1,0 +1,140 @@
+/* styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark-950 text-gray-200 font-sans overflow-x-hidden;
+    background: linear-gradient(135deg, #0a0a0a 0%, #111111 50%, #0a0a0a 100%);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .cyber-border {
+    @apply relative border-2 border-transparent;
+    background: linear-gradient(#0a0a0a, #0a0a0a) padding-box,
+                linear-gradient(45deg, #00f3ff, #8a2be2, #ff00ff) border-box;
+  }
+  
+  .cyber-glow {
+    box-shadow: 
+      0 0 20px rgba(0, 243, 255, 0.3),
+      0 0 40px rgba(138, 43, 226, 0.2),
+      0 0 60px rgba(255, 0, 255, 0.1);
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-neon-blue via-neon-purple to-neon-pink bg-clip-text text-transparent;
+  }
+  
+  .hologram-grid {
+    background-image: 
+      linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+  
+  .neon-button {
+    @apply bg-black/60 backdrop-blur-sm border border-neon-blue/30 transition-all duration-300;
+  }
+  
+  .neon-button:hover {
+    @apply border-neon-blue shadow-glow;
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+    transform: translateY(-2px);
+  }
+  
+  .glass-effect {
+    @apply bg-dark-900/70 backdrop-blur-lg border border-white/10;
+  }
+  
+  .cyber-line {
+    @apply h-px w-full;
+    background: linear-gradient(90deg, transparent, #00f3ff, #8a2be2, transparent);
+  }
+  
+  .scan-line {
+    @apply absolute inset-0;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0, 243, 255, 0.1) 50%,
+      transparent 100%
+    );
+    animation: scan 8s linear infinite;
+  }
+  
+  .terminal-font {
+    font-family: 'Courier New', monospace;
+  }
+  
+  .cyber-card {
+    @apply cyber-border cyber-glow rounded-2xl bg-dark-900/50 backdrop-blur-sm;
+  }
+  
+  .neon-input {
+    @apply bg-dark-800/50 border border-gray-700 rounded-lg px-4 py-3;
+    @apply focus:outline-none focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/30;
+    @apply transition-colors duration-300;
+  }
+}
+
+@layer utilities {
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.5);
+  }
+  
+  .text-shadow-glow {
+    text-shadow: 0 0 10px rgba(0, 243, 255, 0.7);
+  }
+  
+  .scrollbar-cyber {
+    scrollbar-width: thin;
+    scrollbar-color: #00f3ff #1a1a1a;
+  }
+  
+  .scrollbar-cyber::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .scrollbar-cyber::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 4px;
+  }
+  
+  .scrollbar-cyber::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #00f3ff, #8a2be2);
+    border-radius: 4px;
+  }
+}
+
+/* Custom animations */
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+/* For mobile optimizations */
+@media (max-width: 768px) {
+  .mobile-padding {
+    @apply px-4;
+  }
+  
+  .mobile-text {
+    @apply text-sm;
+  }
+  
+  .mobile-card {
+    @apply p-4;
+  }
+}
+
+/* Remove default focus styles for mobile */
+button:focus, 
+input:focus, 
+textarea:focus, 
+select:focus {
+  @apply outline-none ring-2 ring-neon-blue/50;
+}
