@@ -120,7 +120,7 @@ export default function Dashboard() {
       <MobileNav />
       
       {/* Header */}
-    /*
+    
       <div className="container mx-auto px-4 pt-6 pb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
@@ -140,27 +140,9 @@ export default function Dashboard() {
             <FaPlus className="group-hover:rotate-90 transition-transform" />
             New Project
           </button>
-        </div>*/
+        </div>
   // In the header section of pages/index.js
-<header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 p-4 md:p-0">
-  <div>
-    <h1 className="text-3xl md:text-4xl font-bold gradient-text mb-2">
-      <i className="fas fa-rocket mr-3"></i>
-      CyberVercel
-    </h1>
-    <p className="text-gray-400 text-sm md:text-base">
-      Next-gen Vercel project management with GitHub integration
-    </p>
-  </div>
-  
-  <button
-    onClick={() => setShowCreateModal(true)}
-    className="neon-button px-6 py-3 rounded-lg flex items-center gap-2 text-lg font-semibold group transition-all duration-300 hover:shadow-glow hover:-translate-y-0.5"
-  >
-    <i className="fas fa-plus group-hover:rotate-90 transition-transform duration-300"></i>
-    New Project
-  </button>
-</header>
+
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
