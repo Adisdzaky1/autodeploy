@@ -1,3 +1,4 @@
+// components/ProjectCard.js
 import { useState } from 'react'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -9,9 +10,11 @@ import {
   FaChevronDown,
   FaChevronUp,
   FaCalendarAlt,
-  FaBranch,
+  FaCodeBranch, // Changed from FaBranch to FaCodeBranch
   FaClock
 } from 'react-icons/fa'
+
+// ... rest of the component remains the same
 
 const ProjectCard = ({ project, onDelete }) => {
   const [expanded, setExpanded] = useState(false)
