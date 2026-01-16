@@ -1,474 +1,541 @@
 import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import { 
   FaTimes, 
   FaSave, 
   FaGithub,
-  FaServer,
-  FaTerminal 
+  FaTerminal,
+  FaFolder,
+  FaKey,
+  FaSpinner,
+  FaCopy
 } from 'react-icons/fa'
 
 const FRAMEWORKS = [
-  { id: 'nextjs', name: 'Next.js' },
-  { id: 'create-react-app', name: 'Create React App' },
-  { id: 'vue', name: 'Vue.js' },
-  { id: 'nuxt', name: 'Nuxt.js' },
-  { id: 'angular', name: 'Angular' },
-  { id: 'svelte', name: 'Svelte' },
-  { id: 'static', name: 'Static Site' },
-  { id: null, name: 'Other' }
+  { id: 'nextjs', name: 'Next.js', icon: 'fab fa-react' },
+  { id: 'create-react-app', name: 'React', icon: 'fab fa-react' },
+  { id: 'vue', name: 'Vue.js', icon: 'fab fa-vuejs' },
+  { id: 'nuxt', name: 'Nuxt.js', icon: 'fas fa-bolt' },
+  { id: 'angular', name: 'Angular', icon: 'fab fa-angular' },
+  { id: 'svelte', name: 'Svelte', icon: 'fas fa-code' },
+  { id: 'static', name: 'Static', icon: 'fas fa-file-code' },
+  { id: 'express', name: 'Node.js', icon: 'fab fa-node-js' },
 ]
 
-export default function ProjectSettings({ mode, project, onSave, onClose }) {
+const ProjectSettings = ({ project, onSave, onClose }) => {
   const [formData, setFormData] = useState({
     name: '',
-    framework: 'nextjs',
-    gitRepository: '',
+    framework: '',
     buildCommand: '',
     installCommand: '',
-    outputDirectory: '.next',
-    rootDirectory: ''
+    outputDirectory: '',
+    rootDirectory: '',
+    environmentVariables: []
   })
-
+  
   const [githubRepos, setGithubRepos] = useState([])
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [newEnvKey, setNewEnvKey] = useState('')
+  const [newEnvValue, setNewEnvValue] = useState('')
+  const [activeTab, setActiveTab] = useState('general')
 
   useEffect(() => {
-    if (mode === 'edit' && project) {
+    if (project) {
       setFormData({
-        name: project.name,
-        framework: project.framework || 'nextjs',
-        gitRepository: project.gitRepository?.repo || '',
+        name: project.name || '',
+        framework: project.framework || '',
         buildCommand: project.buildCommand || '',
         installCommand: project.installCommand || '',
-        outputDirectory: project.outputDirectory || '.next',
-        rootDirectory: project.rootDirectory || ''
+        outputDirectory: project.outputDirectory || '',
+        rootDirectory: project.rootDirectory || '',
+        environmentVariables: project.env || []
       })
     }
-    
     fetchGithubRepos()
-  }, [mode, project])
+  }, [project])
 
   const fetchGithubRepos = async () => {
     try {
       const res = await fetch('/api/github/repos')
-      const repos = await res.json()
-      setGithubRepos(repos)
+      if (res.ok) {
+        const repos = await res.json()
+        setGithubRepos(repos)
+      }
     } catch (error) {
-      console.error('Error fetching GitHub repos:', error)
+      console.error('Error fetching repos:', error)
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
-    
+    if (!formData.name.trim()) {
+      toast.error('Project name is required')
+      return
+    }
+
+    setSaving(true)
     try {
-      await onSave(formData)
-      onClose()
+      toast.loading('Updating project...')
+      
+      // First, update basic settings
+      const updateRes = await fetch(`/api/vercel/projects?id=${project.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          framework: formData.framework,
+          buildCommand: formData.buildCommand,
+          installCommand: formData.installCommand,
+          outputDirectory: formData.outputDirectory,
+          rootDirectory: formData.rootDirectory
+        })
+      })
+      
+      const updateData = await updateRes.json()
+      
+      if (updateRes.ok) {
+        // Then update environment variables if any
+        if (formData.environmentVariables.length > 0) {
+          await updateEnvironmentVariables()
+        }
+        
+        toast.success('Project updated successfully!')
+        if (onSave) onSave()
+        if (onClose) onClose()
+      } else {
+        toast.error(updateData.error || 'Failed to update project')
+      }
     } catch (error) {
-      console.error('Error saving project:', error)
+      toast.error('Error updating project')
+      console.error(error)
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+  const updateEnvironmentVariables = async () => {
+    // This would require Vercel API v9 for environment variables
+    // For now, we'll just log them
+    console.log('Environment variables to update:', formData.environmentVariables)
   }
 
-  const getFrameworkCommands = (framework) => {
-    const commands = {
-      'nextjs': {
-        install: 'npm install',
-        build: 'npm run build',
-        output: '.next'
-      },
-      'create-react-app': {
-        install: 'npm install',
-        build: 'npm run build',
-        output: 'build'
-      },
-      'vue': {
-        install: 'npm install',
-        build: 'npm run build',
-        output: 'dist'
-      },
-      'nuxt': {
-        install: 'npm install',
-        build: 'npm run generate',
-        output: 'dist'
-      },
-      'angular': {
-        install: 'npm install',
-        build: 'ng build',
-        output: 'dist'
-      },
-      'svelte': {
-        install: 'npm install',
-        build: 'npm run build',
-        output: 'public'
-      },
-      'static': {
-        install: '',
-        build: '',
-        output: ''
-      }
+  const handleAddEnvVariable = () => {
+    if (!newEnvKey.trim() || !newEnvValue.trim()) {
+      toast.error('Both key and value are required')
+      return
     }
     
-    return commands[framework] || { install: '', build: '', output: '' }
-  }
-
-  const handleFrameworkChange = (framework) => {
-    const commands = getFrameworkCommands(framework)
     setFormData(prev => ({
       ...prev,
-      framework,
-      installCommand: commands.install,
-      buildCommand: commands.build,
-      outputDirectory: commands.output
+      environmentVariables: [
+        ...prev.environmentVariables,
+        { key: newEnvKey, value: newEnvValue }
+      ]
     }))
+    
+    setNewEnvKey('')
+    setNewEnvValue('')
+    toast.success('Environment variable added')
+  }
+
+  const handleRemoveEnvVariable = (index) => {
+    const newEnvVars = [...formData.environmentVariables]
+    newEnvVars.splice(index, 1)
+    setFormData(prev => ({ ...prev, environmentVariables: newEnvVars }))
+  }
+
+  const copyProjectId = () => {
+    navigator.clipboard.writeText(project.id)
+    toast.success('Project ID copied to clipboard!')
+  }
+
+  const copyDeploymentUrl = () => {
+    if (project.latestDeployment?.url) {
+      navigator.clipboard.writeText(`https://${project.latestDeployment.url}`)
+      toast.success('Deployment URL copied!')
+    }
   }
 
   return (
-    <div className="settings-modal">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2>
-            {mode === 'create' ? 'Create New Project' : 'Project Settings'}
-          </h2>
-          <button className="close-btn" onClick={onClose}>
-            <FaTimes />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      
+      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl glass-effect border border-neon-blue/30">
+        {/* Header */}
+        <div className="p-4 md:p-6 border-b border-gray-800">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold gradient-text">
+                <i className="fas fa-cog mr-2"></i>
+                Project Settings
+              </h2>
+              <p className="text-gray-400 text-sm mt-1">{project?.name}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full bg-dark-800 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+            >
+              <FaTimes className="text-gray-400 hover:text-red-400" />
+            </button>
+          </div>
+          
+          {/* Tabs */}
+          <div className="flex overflow-x-auto mt-6 scrollbar-cyber">
+            {['general', 'build', 'environment', 'danger'].map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                  activeTab === tab
+                    ? 'border-neon-blue text-neon-blue'
+                    : 'border-transparent text-gray-400 hover:text-white'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-section">
-            <h3><FaServer /> Basic Settings</h3>
-            
-            <div className="form-group">
-              <label htmlFor="name">Project Name *</label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="my-awesome-project"
-                required
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="p-4 md:p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 150px)' }}>
+          {/* General Settings */}
+          {activeTab === 'general' && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <i className="fas fa-cube mr-2"></i>
+                  Project Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                  className="neon-input w-full"
+                  required
+                />
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="framework">Framework</label>
-              <div className="framework-grid">
-                {FRAMEWORKS.map(fw => (
-                  <button
-                    key={fw.id || 'other'}
-                    type="button"
-                    className={`framework-btn ${formData.framework === fw.id ? 'active' : ''}`}
-                    onClick={() => handleFrameworkChange(fw.id)}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <FaGithub className="inline mr-2" />
+                  GitHub Repository
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    value={project.gitRepository?.repo || ''}
+                    disabled
+                    className="neon-input w-full opacity-50"
                   >
-                    {fw.name}
+                    <option value={project.gitRepository?.repo || ''}>
+                      {project.gitRepository?.repo || 'Not connected'}
+                    </option>
+                  </select>
+                  <button
+                    type="button"
+                    className="neon-button px-4 py-3 rounded-lg"
+                    onClick={() => window.open('https://vercel.com/dashboard', '_blank')}
+                  >
+                    Change
                   </button>
-                ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <FaFolder className="inline mr-2" />
+                  Root Directory
+                </label>
+                <input
+                  type="text"
+                  value={formData.rootDirectory}
+                  onChange={(e) => setFormData(prev => ({ ...prev, rootDirectory: e.target.value }))}
+                  placeholder="Leave empty for repository root"
+                  className="neon-input w-full"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Project ID
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={project.id}
+                      readOnly
+                      className="neon-input w-full font-mono text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={copyProjectId}
+                      className="neon-button px-4 py-3 rounded-lg flex items-center gap-2"
+                    >
+                      <FaCopy />
+                    </button>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Deployment URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={project.latestDeployment?.url ? `https://${project.latestDeployment.url}` : 'Not deployed'}
+                      readOnly
+                      className="neon-input w-full font-mono text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={copyDeploymentUrl}
+                      disabled={!project.latestDeployment?.url}
+                      className="neon-button px-4 py-3 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <FaCopy />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          <div className="form-section">
-            <h3><FaGithub /> GitHub Integration</h3>
-            
-            <div className="form-group">
-              <label htmlFor="gitRepository">GitHub Repository</label>
-              <select
-                id="gitRepository"
-                name="gitRepository"
-                value={formData.gitRepository}
-                onChange={handleChange}
-              >
-                <option value="">Select a repository</option>
-                {githubRepos.map(repo => (
-                  <option key={repo.id} value={repo.full_name}>
-                    {repo.full_name}
-                  </option>
-                ))}
-              </select>
-              <p className="help-text">
-                Or enter manually: owner/repo-name
-              </p>
+          {/* Build Settings */}
+          {activeTab === 'build' && (
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-3">
+                  <i className="fas fa-layer-group mr-2"></i>
+                  Framework
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {FRAMEWORKS.map(fw => (
+                    <button
+                      type="button"
+                      key={fw.id}
+                      onClick={() => setFormData(prev => ({ ...prev, framework: fw.id }))}
+                      className={`p-4 rounded-xl border-2 transition-all ${
+                        formData.framework === fw.id
+                          ? 'border-neon-blue bg-neon-blue/10'
+                          : 'border-gray-700 bg-dark-800/30 hover:border-gray-600'
+                      }`}
+                    >
+                      <i className={`${fw.icon} text-2xl mb-2 ${formData.framework === fw.id ? 'text-neon-blue' : 'text-gray-400'}`}></i>
+                      <p className={`text-sm font-medium ${formData.framework === fw.id ? 'text-white' : 'text-gray-400'}`}>
+                        {fw.name}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <FaTerminal className="inline mr-2" />
+                  Install Command
+                </label>
+                <input
+                  type="text"
+                  value={formData.installCommand}
+                  onChange={(e) => setFormData(prev => ({ ...prev, installCommand: e.target.value }))}
+                  placeholder="npm install"
+                  className="neon-input w-full font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <i className="fas fa-hammer mr-2"></i>
+                  Build Command
+                </label>
+                <input
+                  type="text"
+                  value={formData.buildCommand}
+                  onChange={(e) => setFormData(prev => ({ ...prev, buildCommand: e.target.value }))}
+                  placeholder="npm run build"
+                  className="neon-input w-full font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <i className="fas fa-folder-open mr-2"></i>
+                  Output Directory
+                </label>
+                <input
+                  type="text"
+                  value={formData.outputDirectory}
+                  onChange={(e) => setFormData(prev => ({ ...prev, outputDirectory: e.target.value }))}
+                  placeholder=".next"
+                  className="neon-input w-full"
+                />
+              </div>
             </div>
+          )}
 
-            <div className="form-group">
-              <label htmlFor="rootDirectory">Root Directory</label>
-              <input
-                type="text"
-                id="rootDirectory"
-                name="rootDirectory"
-                value={formData.rootDirectory}
-                onChange={handleChange}
-                placeholder="Leave empty for repository root"
-              />
+          {/* Environment Variables */}
+          {activeTab === 'environment' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-bold text-white mb-4">
+                  <FaKey className="inline mr-2" />
+                  Environment Variables
+                </h3>
+                <p className="text-gray-400 text-sm mb-6">
+                  Environment variables are managed directly on Vercel Dashboard for security reasons.
+                </p>
+                
+                <a
+                  href={`https://vercel.com/dashboard/${project.id}/settings/environment-variables`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="neon-button px-6 py-3 rounded-lg inline-flex items-center gap-2"
+                >
+                  <i className="fas fa-external-link-alt"></i>
+                  Manage on Vercel Dashboard
+                </a>
+              </div>
+
+              {/* Note: Actual environment variable management requires Vercel API v9 */}
+              <div className="border border-gray-800 rounded-xl p-4">
+                <h4 className="font-medium text-white mb-3">Add Variable (Simulation)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                  <input
+                    type="text"
+                    value={newEnvKey}
+                    onChange={(e) => setNewEnvKey(e.target.value)}
+                    placeholder="Variable name"
+                    className="neon-input"
+                  />
+                  <input
+                    type="text"
+                    value={newEnvValue}
+                    onChange={(e) => setNewEnvValue(e.target.value)}
+                    placeholder="Variable value"
+                    className="neon-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddEnvVariable}
+                    className="bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Add Variable
+                  </button>
+                </div>
+                
+                {formData.environmentVariables.length > 0 && (
+                  <div className="space-y-2">
+                    {formData.environmentVariables.map((env, index) => (
+                      <div key={index} className="flex items-center justify-between bg-dark-800/50 rounded-lg p-3">
+                        <div className="font-mono">
+                          <span className="text-neon-blue">{env.key}</span>
+                          <span className="text-gray-500 mx-2">=</span>
+                          <span className="text-gray-300">••••••••</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEnvVariable(index)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <FaTimes />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="form-section">
-            <h3><FaTerminal /> Build Settings</h3>
-            
-            <div className="form-group">
-              <label htmlFor="installCommand">Install Command</label>
-              <input
-                type="text"
-                id="installCommand"
-                name="installCommand"
-                value={formData.installCommand}
-                onChange={handleChange}
-                placeholder="npm install"
-              />
+          {/* Danger Zone */}
+          {activeTab === 'danger' && (
+            <div className="space-y-6">
+              <div className="border border-red-500/30 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-red-400 mb-4">
+                  <i className="fas fa-exclamation-triangle mr-2"></i>
+                  Danger Zone
+                </h3>
+                
+                <div className="space-y-4">
+                  <div className="border border-red-500/20 rounded-lg p-4">
+                    <h4 className="font-medium text-white mb-2">Transfer Project</h4>
+                    <p className="text-gray-400 text-sm mb-3">
+                      Transfer this project to another team or user.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => window.open('https://vercel.com/dashboard', '_blank')}
+                      className="neon-button px-4 py-2 rounded-lg text-sm"
+                    >
+                      Transfer on Vercel Dashboard
+                    </button>
+                  </div>
+                  
+                  <div className="border border-red-500/20 rounded-lg p-4">
+                    <h4 className="font-medium text-white mb-2">Delete Project</h4>
+                    <p className="text-gray-400 text-sm mb-3">
+                      Once deleted, all deployments will be removed and cannot be recovered.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete "${project.name}"? This cannot be undone.`)) {
+                          window.location.href = `/api/vercel/projects?id=${project.id}&action=delete`
+                        }
+                      }}
+                      className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2 rounded-lg text-sm border border-red-500/30 transition-colors"
+                    >
+                      Delete Project
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-
-            <div className="form-group">
-              <label htmlFor="buildCommand">Build Command</label>
-              <input
-                type="text"
-                id="buildCommand"
-                name="buildCommand"
-                value={formData.buildCommand}
-                onChange={handleChange}
-                placeholder="npm run build"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="outputDirectory">Output Directory</label>
-              <input
-                type="text"
-                id="outputDirectory"
-                name="outputDirectory"
-                value={formData.outputDirectory}
-                onChange={handleChange}
-                placeholder=".next"
-              />
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button 
-              type="button" 
-              className="cancel-btn"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="save-btn"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : (
-                <>
-                  <FaSave /> {mode === 'create' ? 'Create Project' : 'Save Changes'}
-                </>
-              )}
-            </button>
-          </div>
+          )}
         </form>
-      </div>
 
-      <style jsx>{`
-        .settings-modal {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 20px;
-        }
-        
-        .modal-content {
-          background: white;
-          border-radius: 15px;
-          width: 100%;
-          max-width: 800px;
-          max-height: 90vh;
-          overflow-y: auto;
-        }
-        
-        .modal-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1.5rem;
-          border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .modal-header h2 {
-          margin: 0;
-          color: #333;
-        }
-        
-        .close-btn {
-          background: none;
-          border: none;
-          font-size: 1.5rem;
-          cursor: pointer;
-          color: #666;
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .close-btn:hover {
-          background: #f5f5f5;
-        }
-        
-        form {
-          padding: 1.5rem;
-        }
-        
-        .form-section {
-          margin-bottom: 2rem;
-          padding-bottom: 1.5rem;
-          border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .form-section:last-child {
-          border-bottom: none;
-          margin-bottom: 0;
-        }
-        
-        .form-section h3 {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          margin: 0 0 1rem 0;
-          color: #333;
-        }
-        
-        .form-group {
-          margin-bottom: 1rem;
-        }
-        
-        .form-group label {
-          display: block;
-          margin-bottom: 0.5rem;
-          font-weight: 500;
-          color: #333;
-        }
-        
-        .form-group input,
-        .form-group select {
-          width: 100%;
-          padding: 10px;
-          border: 2px solid #e0e0e0;
-          border-radius: 6px;
-          font-size: 1rem;
-          transition: border-color 0.2s;
-        }
-        
-        .form-group input:focus,
-        .form-group select:focus {
-          outline: none;
-          border-color: #667eea;
-        }
-        
-        .help-text {
-          margin-top: 0.25rem;
-          font-size: 0.9rem;
-          color: #666;
-        }
-        
-        .framework-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-          gap: 0.5rem;
-        }
-        
-        .framework-btn {
-          padding: 10px;
-          border: 2px solid #e0e0e0;
-          background: white;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        
-        .framework-btn:hover {
-          border-color: #667eea;
-          background: #f0f0ff;
-        }
-        
-        .framework-btn.active {
-          border-color: #667eea;
-          background: #667eea;
-          color: white;
-        }
-        
-        .form-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 1rem;
-          margin-top: 2rem;
-          padding-top: 1.5rem;
-          border-top: 1px solid #e0e0e0;
-        }
-        
-        .cancel-btn, .save-btn {
-          padding: 10px 24px;
-          border-radius: 6px;
-          border: none;
-          cursor: pointer;
-          font-weight: 500;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        
-        .cancel-btn {
-          background: #f5f5f5;
-          color: #333;
-        }
-        
-        .cancel-btn:hover {
-          background: #e0e0e0;
-        }
-        
-        .save-btn {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-        }
-        
-        .save-btn:hover:not(:disabled) {
-          opacity: 0.9;
-        }
-        
-        .save-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        
-        @media (max-width: 768px) {
-          .modal-content {
-            max-height: 95vh;
-          }
-          
-          .framework-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-          
-          .form-actions {
-            flex-direction: column;
-          }
-        }
-      `}</style>
+        {/* Footer */}
+        <div className="p-4 md:p-6 border-t border-gray-800 bg-dark-900/50">
+          <div className="flex flex-col md:flex-row justify-between gap-4">
+            <div className="text-sm text-gray-400">
+              Changes are saved automatically on Vercel.
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-3 rounded-lg bg-dark-800 hover:bg-dark-700 text-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              
+              <button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={saving}
+                className="bg-gradient-to-r from-neon-blue to-neon-purple text-white px-8 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <FaSpinner className="animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <FaSave />
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
+
+export default ProjectSettings
