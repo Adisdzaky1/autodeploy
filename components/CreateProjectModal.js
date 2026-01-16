@@ -397,59 +397,62 @@ const CreateProjectModal = ({ onClose, onSuccess }) => {
         </form>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-800 bg-dark-900/50">
-          <div className="flex justify-between">
-            <div>
-              {step > 1 && (
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  className="px-6 py-3 rounded-lg bg-dark-800 hover:bg-dark-700 text-gray-300 hover:text-white transition-colors"
-                >
-                  Previous
-                </button>
-              )}
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-3 rounded-lg bg-dark-800 hover:bg-red-500/20 text-gray-300 hover:text-red-300 transition-colors"
-              >
-                Cancel
-              </button>
-              
-              {step < 3 ? (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-neon-blue to-neon-purple text-white font-medium hover:opacity-90 transition-opacity"
-                >
-                  Continue
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-8 py-3 rounded-lg bg-gradient-to-r from-neon-green to-neon-blue text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <FaSpinner className="animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-rocket"></i>
-                      Create Project
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        
+
+<div className="p-4 md:p-6 border-t border-gray-800 bg-dark-900/50">
+  <div className="flex flex-col-reverse md:flex-row gap-3">
+    <div className="flex gap-3">
+      {step > 1 && (
+        <button
+          type="button"
+          onClick={prevStep}
+          className="flex-1 md:flex-none px-4 py-3 rounded-lg bg-dark-800 hover:bg-dark-700 text-gray-300 hover:text-white transition-colors"
+        >
+          Previous
+        </button>
+      )}
+    </div>
+    
+    <div className="flex-1 md:flex-none flex gap-3">
+      <button
+        type="button"
+        onClick={onClose}
+        className="flex-1 px-4 py-3 rounded-lg bg-dark-800 hover:bg-red-500/20 text-gray-300 hover:text-red-300 transition-colors"
+      >
+        Cancel
+      </button>
+      
+      {step < 3 ? (
+        <button
+          type="button"
+          onClick={nextStep}
+          className="flex-1 bg-gradient-to-r from-neon-blue to-neon-purple text-white px-4 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity"
+        >
+          Continue
+        </button>
+      ) : (
+        <button
+          type="submit"
+          disabled={loading}
+          className="flex-1 bg-gradient-to-r from-neon-green to-neon-blue text-white px-4 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <FaSpinner className="animate-spin" />
+              Creating...
+            </>
+          ) : (
+            <>
+              <i className="fas fa-rocket"></i>
+              Create Project
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  </div>
+</div>
+          
       </div>
     </div>
   )
